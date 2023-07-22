@@ -2799,7 +2799,7 @@ def test_cannot_use_leading_underscore_field_names():
 
 def test_schema_generator_customize_type() -> None:
     class LaxStrGenerator(GenerateSchema):
-        def str_schema(self) -> CoreSchema:
+        def str_schema(self, obj: Any) -> CoreSchema:
             return core_schema.no_info_plain_validator_function(str)
 
     class Model(BaseModel):

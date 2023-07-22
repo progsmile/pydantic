@@ -2457,7 +2457,7 @@ def test_dataclasses_with_slots_and_default():
 
 def test_schema_generator() -> None:
     class LaxStrGenerator(GenerateSchema):
-        def str_schema(self) -> CoreSchema:
+        def str_schema(self, _obj: Any) -> CoreSchema:
             return core_schema.no_info_plain_validator_function(str)
 
     @pydantic.dataclasses.dataclass

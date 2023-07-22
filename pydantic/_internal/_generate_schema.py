@@ -326,46 +326,61 @@ class GenerateSchema:
     def _arbitrary_types(self) -> bool:
         return self._config_wrapper.arbitrary_types_allowed
 
-    def literal_schema(self, values: list[Any]) -> CoreSchema:
+    def literal_schema(self, tp: Any, values: list[Any]) -> CoreSchema:
         return core_schema.literal_schema(values)
 
-    def any_schema(self) -> CoreSchema:
+    def any_schema(self, tp: Any) -> CoreSchema:
         return core_schema.any_schema()
 
-    def str_schema(self) -> CoreSchema:
+    def str_schema(self, tp: Any) -> CoreSchema:
         return core_schema.str_schema()
 
-    def bytes_schema(self) -> CoreSchema:
+    def bytes_schema(
+        self,
+        tp: Any,
+    ) -> CoreSchema:
         return core_schema.bytes_schema()
 
-    def int_schema(self) -> CoreSchema:
+    def int_schema(
+        self,
+        tp: Any,
+    ) -> CoreSchema:
         return core_schema.int_schema()
 
-    def float_schema(self) -> CoreSchema:
+    def float_schema(
+        self,
+        tp: Any,
+    ) -> CoreSchema:
         return core_schema.float_schema()
 
-    def bool_schema(self) -> CoreSchema:
+    def bool_schema(
+        self,
+        tp: Any,
+    ) -> CoreSchema:
         return core_schema.bool_schema()
 
-    def none_schema(self) -> CoreSchema:
+    def none_schema(
+        self,
+        tp: Any,
+    ) -> CoreSchema:
         return core_schema.none_schema()
 
-    def list_schema(self, items_type: Any) -> CoreSchema:
+    def list_schema(self, tp: Any, items_type: Any) -> CoreSchema:
         return core_schema.list_schema(self.generate_schema(items_type))
 
-    def dict_schema(self, keys_type: Any, values_type: Any) -> CoreSchema:
+    def dict_schema(self, tp: Any, keys_type: Any, values_type: Any) -> CoreSchema:
         return core_schema.dict_schema(self.generate_schema(keys_type), self.generate_schema(values_type))
 
-    def set_schema(self, items_type: Any) -> CoreSchema:
+    def set_schema(self, tp: Any, items_type: Any) -> CoreSchema:
         return core_schema.set_schema(self.generate_schema(items_type))
 
-    def frozenset_schema(self, items_type: Any) -> CoreSchema:
+    def frozenset_schema(self, tp: Any, items_type: Any) -> CoreSchema:
         return core_schema.frozenset_schema(self.generate_schema(items_type))
 
-    def tuple_variable_schema(self, items_type: Any) -> CoreSchema:
+    def tuple_variable_schema(self, tp: Any, items_type: Any) -> CoreSchema:
         return core_schema.tuple_variable_schema(self.generate_schema(items_type))
 
-    def tuple_positional_schema(self, items_types: list[Any]) -> CoreSchema:
+    def tuple_positional_schema(self, tp: Any, items_types: list[Any]) -> CoreSchema:
         items_schemas = [self.generate_schema(items_type) for items_type in items_types]
         return core_schema.tuple_positional_schema(items_schemas)
 
@@ -667,6 +682,15 @@ class GenerateSchema:
             return Any
         return args[0]
 
+    def _get_first_two_args_or_any(self, obj: Any) -> tuple[Any, Any]:
+        args = self._get_args_resolving_forward_refs(obj)
+        if not args:
+            return (Any, Any)
+        if len(args) < 2:
+            origin = get_origin(obj)
+            raise TypeError(f'Expected two type arguments for {origin}, got 1')
+        return args[0], args[1]
+
     def _generate_schema(self, obj: Any) -> core_schema.CoreSchema:
         """Recursively generate a pydantic-core schema for any supported python type."""
         if isinstance(obj, dict):
@@ -703,29 +727,29 @@ class GenerateSchema:
         as they get requested and we figure out what the right API for them is.
         """
         if obj is str:
-            return self.str_schema()
+            return self.str_schema(obj)
         elif obj is bytes:
-            return self.bytes_schema()
+            return self.bytes_schema(obj)
         elif obj is int:
-            return self.int_schema()
+            return self.int_schema(obj)
         elif obj is float:
-            return self.float_schema()
+            return self.float_schema(obj)
         elif obj is bool:
-            return self.bool_schema()
+            return self.bool_schema(obj)
         elif obj is Any or obj is object:
-            return self.any_schema()
+            return self.any_schema(obj)
         elif obj is None or obj is _typing_extra.NoneType:
-            return self.none_schema()
+            return self.none_schema(obj)
         elif obj in TUPLE_TYPES:
             return self._tuple_schema(obj)
         elif obj in LIST_TYPES:
-            return self.list_schema(self._get_first_arg_or_any(obj))
+            return self.list_schema(obj, self._get_first_arg_or_any(obj))
         elif obj in SET_TYPES:
-            return self.set_schema(self._get_first_arg_or_any(obj))
+            return self.set_schema(obj, self._get_first_arg_or_any(obj))
         elif obj in FROZEN_SET_TYPES:
-            return self.frozenset_schema(self._get_first_arg_or_any(obj))
+            return self.frozenset_schema(obj, self._get_first_arg_or_any(obj))
         elif obj in DICT_TYPES:
-            return self.dict_schema(*(self._get_args_resolving_forward_refs(obj) or (Any, Any)))
+            return self.dict_schema(obj, *self._get_first_two_args_or_any(obj))
         elif isinstance(obj, TypeAliasType):
             return self._type_alias_type_schema(obj)
         elif obj == type:
@@ -751,10 +775,7 @@ class GenerateSchema:
             if obj is Final:
                 return core_schema.any_schema()
             return self.generate_schema(
-                self._get_args_resolving_forward_refs(
-                    obj,
-                    required=True,
-                )[0]
+                self._get_first_arg_or_any(obj),
             )
         elif isinstance(obj, (FunctionType, LambdaType, MethodType, partial)):
             return self._callable_schema(obj)
@@ -801,13 +822,13 @@ class GenerateSchema:
         elif origin in TUPLE_TYPES:
             return self._tuple_schema(obj)
         elif origin in LIST_TYPES:
-            return self.list_schema(self._get_first_arg_or_any(obj))
+            return self.list_schema(obj, self._get_first_arg_or_any(obj))
         elif origin in SET_TYPES:
-            return self.set_schema(self._get_first_arg_or_any(obj))
+            return self.set_schema(obj, self._get_first_arg_or_any(obj))
         elif origin in FROZEN_SET_TYPES:
-            return self.frozenset_schema(self._get_first_arg_or_any(obj))
+            return self.frozenset_schema(obj, self._get_first_arg_or_any(obj))
         elif origin in DICT_TYPES:
-            return self.dict_schema(*(self._get_args_resolving_forward_refs(obj) or (Any, Any)))
+            return self.dict_schema(obj, *self._get_first_two_args_or_any(obj))
         elif is_typeddict(origin):
             return self._typed_dict_schema(obj, origin)
         elif origin in (typing.Type, type):
@@ -1005,7 +1026,7 @@ class GenerateSchema:
         """Generate schema for a Literal."""
         expected = _typing_extra.all_literal_values(literal_type)
         assert expected, f'literal "expected" cannot be empty, obj={literal_type}'
-        return self.literal_schema(expected)
+        return self.literal_schema(literal_type, expected)
 
     def _typed_dict_schema(self, typed_dict_cls: Any, origin: Any) -> core_schema.CoreSchema:
         """Generate schema for a TypedDict.
@@ -1168,16 +1189,16 @@ class GenerateSchema:
                 return core_schema.tuple_positional_schema([])
         elif params[-1] is Ellipsis:
             if len(params) == 2:
-                return self.tuple_variable_schema(params[0])
+                return self.tuple_variable_schema(tuple_type, params[0])
             else:
                 # TODO: something like https://github.com/pydantic/pydantic/issues/5952
                 raise ValueError('Variable tuples can only have one type')
         elif len(params) == 1 and params[0] == ():
             # special case for `Tuple[()]` which means `Tuple[]` - an empty tuple
             # NOTE: This conditional can be removed when we drop support for Python 3.10.
-            return self.tuple_positional_schema([])
+            return self.tuple_positional_schema(tuple_type, [])
         else:
-            return self.tuple_positional_schema(list(params))
+            return self.tuple_positional_schema(tuple_type, list(params))
 
     def _type_schema(self) -> core_schema.CoreSchema:
         return core_schema.custom_error_schema(
