@@ -97,11 +97,11 @@ ModifyCoreSchemaWrapHandler = GetCoreSchemaHandler
 GetCoreSchemaFunction = Callable[[Any, ModifyCoreSchemaWrapHandler], core_schema.CoreSchema]
 
 
-TUPLE_TYPES: list[type] = [tuple, typing.Tuple]
-LIST_TYPES: list[type] = [list, typing.List, collections.abc.MutableSequence]
-SET_TYPES: list[type] = [set, typing.Set, collections.abc.MutableSet]
-FROZEN_SET_TYPES: list[type] = [frozenset, typing.FrozenSet, collections.abc.Set]
-DICT_TYPES: list[type] = [dict, typing.Dict, collections.abc.MutableMapping, collections.abc.Mapping]
+TUPLE_TYPES: set[type] = {tuple, typing.Tuple}
+LIST_TYPES: set[type] = {list, typing.List, collections.abc.MutableSequence}
+SET_TYPES: set[type] = {set, typing.Set, collections.abc.MutableSet}
+FROZEN_SET_TYPES: set[type] = {frozenset, typing.FrozenSet, collections.abc.Set}
+DICT_TYPES: set[type] = {dict, typing.Dict, collections.abc.MutableMapping, collections.abc.Mapping}
 
 
 def check_validator_fields_against_field_name(
@@ -251,12 +251,19 @@ JsonEncoders = Dict[Type[Any], Callable[[Any], Any]]
 
 
 def _add_custom_serialization_from_json_encoders(
-    json_encoders: JsonEncoders | None, obj: Any, schema: CoreSchema
+    json_encoders: JsonEncoders | None, tp: Any, schema: CoreSchema
 ) -> None:
+    """Iterate over the json_encoders and add the first matching encoder to the schema.
+
+    Args:
+        json_encoders (JsonEncoders | None): A dictionary of types and their encoder functions.
+        tp (Any): The type to check for a matching encoder.
+        schema (CoreSchema): The schema to add the encoder to.
+    """
     if json_encoders is None:
         return
     # Check the class type and its superclasses for a matching encoder
-    for base in (obj, obj.__class__.__mro__[:-1]):
+    for base in (tp, *tp.__class__.__mro__[:-1]):
         try:
             encoder = json_encoders[base]
         except KeyError:
@@ -764,7 +771,7 @@ class GenerateSchema:
             source_type, annotations = res
             return self._apply_annotations(source_type, annotations)
 
-        origin = get_origin(obj) or getattr(obj, '__origin__', None)
+        origin = get_origin(obj)
         if origin is not None:
             return self._match_generic_type(obj, origin)
 
