@@ -15,6 +15,9 @@ if not TYPE_CHECKING:
     # and https://youtrack.jetbrains.com/issue/PY-51428
     DeprecationWarning = PydanticDeprecatedSince20
 
+if TYPE_CHECKING:
+    from .._internal._schema_generation_shared import GenerateSchema
+
 DEPRECATION_MESSAGE = 'Support for class-based `config` is deprecated, use ConfigDict instead.'
 
 
@@ -47,6 +50,7 @@ class ConfigWrapper:
     ignored_types: tuple[type, ...]
     allow_inf_nan: bool
     json_schema_extra: dict[str, object] | JsonSchemaExtraCallable | None
+    json_encoders: dict[type, Callable[[Any], Any]] | None
 
     # new in V2
     strict: bool
@@ -59,6 +63,7 @@ class ConfigWrapper:
     validate_return: bool
     protected_namespaces: tuple[str, ...]
     hide_input_in_errors: bool
+    schema_generator: type[GenerateSchema] | None
 
     def __init__(self, config: ConfigDict | dict[str, Any] | type[Any] | None, *, check: bool = True):
         if check:
@@ -191,6 +196,8 @@ config_defaults = ConfigDict(
     validate_return=False,
     protected_namespaces=('model_',),
     hide_input_in_errors=False,
+    json_encoders=None,
+    schema_generator=None,
 )
 
 
@@ -227,7 +234,6 @@ V2_REMOVED_KEYS = {
     'underscore_attrs_are_private',
     'json_loads',
     'json_dumps',
-    'json_encoders',
     'copy_on_model_validation',
     'post_init_call',
 }

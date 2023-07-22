@@ -15,6 +15,9 @@ if not TYPE_CHECKING:
     # and https://youtrack.jetbrains.com/issue/PY-51428
     DeprecationWarning = PydanticDeprecatedSince20
 
+if TYPE_CHECKING:
+    from ._internal._generate_schema import GenerateSchema as _GenerateSchema
+
 __all__ = 'BaseConfig', 'ConfigDict', 'Extra'
 
 
@@ -147,6 +150,7 @@ class ConfigDict(TypedDict, total=False):
     ignored_types: tuple[type, ...]
     allow_inf_nan: bool
     json_schema_extra: dict[str, object] | JsonSchemaExtraCallable | None
+    json_encoders: dict[type, Callable[[Any], Any]] | None
 
     # new in V2
     strict: bool
@@ -160,6 +164,7 @@ class ConfigDict(TypedDict, total=False):
     validate_return: bool
     protected_namespaces: tuple[str, ...]
     hide_input_in_errors: bool
+    schema_generator: type[_GenerateSchema] | None
 
 
 __getattr__ = getattr_migration(__name__)

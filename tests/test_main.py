@@ -25,12 +25,13 @@ from uuid import UUID, uuid4
 
 import pytest
 from pydantic_core import CoreSchema, core_schema
-from typing_extensions import Annotated, Final, Literal
+from typing_extensions import Annotated, Final, Literal, get_args, get_origin
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    GenerateSchema,
     GetCoreSchemaHandler,
     PrivateAttr,
     PydanticDeprecatedSince20,
@@ -2794,3 +2795,40 @@ def test_cannot_use_leading_underscore_field_names():
 
         class Model3(BaseModel):
             ___: int = Field(default=1)
+
+
+def test_schema_generator_customize_type() -> None:
+    class LaxStrGenerator(GenerateSchema):
+        def str_schema(self) -> CoreSchema:
+            return core_schema.no_info_plain_validator_function(str)
+
+    class Model(BaseModel):
+        x: str
+        model_config = ConfigDict(schema_generator=LaxStrGenerator)
+
+    assert Model(x=1).x == '1'
+
+
+def test_schema_generator_unknown_type() -> None:
+    T = TypeVar('T')
+
+    class NDArray(Generic[T]):
+        def __init__(self, data: List[T]):
+            self.data = data
+
+    class CustomGenerateSchema(GenerateSchema):
+        def unknown_type_schema(self, obj: Any) -> CoreSchema:
+            origin = get_origin(obj)
+            if origin is NDArray:
+                items_schema = self.generate_schema((get_args(obj) or [Any])[0])
+                return core_schema.no_info_after_validator_function(
+                    NDArray,
+                    core_schema.list_schema(items_schema),
+                )
+            return super().unknown_type_schema(obj)
+
+    class Model(BaseModel):
+        x: NDArray[int]
+        model_config = ConfigDict(schema_generator=CustomGenerateSchema)
+
+    assert Model(x=['1', '2']).x.data == [1, 2]
