@@ -97,11 +97,11 @@ ModifyCoreSchemaWrapHandler = GetCoreSchemaHandler
 GetCoreSchemaFunction = Callable[[Any, ModifyCoreSchemaWrapHandler], core_schema.CoreSchema]
 
 
-TUPLE_TYPES: set[type] = {tuple, typing.Tuple}
-LIST_TYPES: set[type] = {list, typing.List, collections.abc.MutableSequence}
-SET_TYPES: set[type] = {set, typing.Set, collections.abc.MutableSet}
-FROZEN_SET_TYPES: set[type] = {frozenset, typing.FrozenSet, collections.abc.Set}
-DICT_TYPES: set[type] = {dict, typing.Dict, collections.abc.MutableMapping, collections.abc.Mapping}
+TUPLE_TYPES: list[type] = [tuple, typing.Tuple]
+LIST_TYPES: list[type] = [list, typing.List, collections.abc.MutableSequence]
+SET_TYPES: list[type] = [set, typing.Set, collections.abc.MutableSet]
+FROZEN_SET_TYPES: list[type] = [frozenset, typing.FrozenSet, collections.abc.Set]
+DICT_TYPES: list[type] = [dict, typing.Dict, collections.abc.MutableMapping, collections.abc.Mapping]
 
 
 def check_validator_fields_against_field_name(
