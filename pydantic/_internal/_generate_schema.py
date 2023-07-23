@@ -25,7 +25,6 @@ from typing import (
     Iterable,
     Iterator,
     Mapping,
-    Type,
     TypeVar,
     Union,
     cast,
@@ -247,33 +246,6 @@ class ConfigWrapperStack:
         return _context_manager()
 
 
-JsonEncoders = Dict[Type[Any], Callable[[Any], Any]]
-
-
-def _add_custom_serialization_from_json_encoders(
-    json_encoders: JsonEncoders | None, tp: Any, schema: CoreSchema
-) -> None:
-    """Iterate over the json_encoders and add the first matching encoder to the schema.
-
-    Args:
-        json_encoders (JsonEncoders | None): A dictionary of types and their encoder functions.
-        tp (Any): The type to check for a matching encoder.
-        schema (CoreSchema): The schema to add the encoder to.
-    """
-    if json_encoders is None:
-        return
-    # Check the class type and its superclasses for a matching encoder
-    for base in (tp, *tp.__class__.__mro__[:-1]):
-        try:
-            encoder = json_encoders[base]
-        except KeyError:
-            continue
-
-        serialization = schema.get('serialization') or core_schema.plain_serializer_function_ser_schema(encoder)
-        # TODO: in theory we should check that the schema accepts a serialization key
-        schema['serialization'] = serialization  # type: ignore
-
-
 class GenerateSchema:
     """Generate core schema for a Pydantic model, dataclass and types like `str`, `datatime`, ... ."""
 
@@ -307,10 +279,6 @@ class GenerateSchema:
     @property
     def _config_wrapper(self) -> ConfigWrapper:
         return self._config_wrapper_stack.tail
-
-    @property
-    def _json_encoders(self) -> JsonEncoders | None:
-        return self._config_wrapper.json_encoders
 
     @property
     def _current_generate_schema(self) -> GenerateSchema:
@@ -487,8 +455,6 @@ class GenerateSchema:
             metadata_schema = resolve_original_schema(schema, self.defs.definitions)
             if metadata_schema:
                 self._add_js_function(metadata_schema, metadata_js_function)
-
-        _add_custom_serialization_from_json_encoders(self._json_encoders, obj, schema)
 
         return schema
 
@@ -1594,7 +1560,7 @@ class GenerateSchema:
         if pydantic_js_annotation_functions:
             metadata = CoreMetadataHandler(schema).metadata
             metadata.setdefault('pydantic_js_annotation_functions', []).extend(pydantic_js_annotation_functions)
-        _add_custom_serialization_from_json_encoders(self._json_encoders, source_type, schema)
+
         return schema
 
     def _apply_single_annotation(  # noqa: C901

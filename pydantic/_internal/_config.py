@@ -50,7 +50,6 @@ class ConfigWrapper:
     ignored_types: tuple[type, ...]
     allow_inf_nan: bool
     json_schema_extra: dict[str, object] | JsonSchemaExtraCallable | None
-    json_encoders: dict[type, Callable[[Any], Any]] | None
 
     # new in V2
     strict: bool
@@ -196,7 +195,6 @@ config_defaults = ConfigDict(
     validate_return=False,
     protected_namespaces=('model_',),
     hide_input_in_errors=False,
-    json_encoders=None,
     schema_generator=None,
 )
 

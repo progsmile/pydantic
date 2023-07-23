@@ -24,7 +24,6 @@ from pydantic._internal._config import ConfigWrapper, config_defaults
 from pydantic.config import ConfigDict
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 from pydantic.errors import PydanticUserError
-from pydantic.type_adapter import TypeAdapter
 
 if sys.version_info < (3, 9):
     from typing_extensions import Annotated
@@ -641,26 +640,3 @@ def test_config_inheritance_with_annotations():
         model_config: ConfigDict = {'str_to_lower': True}
 
     assert Child.model_config == {'extra': 'allow', 'str_to_lower': True}
-
-
-def test_json_encoders_model() -> None:
-    class Model(BaseModel):
-        model_config = ConfigDict(json_encoders={Decimal: lambda x: str(x * 2), int: lambda x: str(x * 3)})
-        value: Decimal
-        x: int
-
-    assert Model(value=Decimal('1.1'), x=1).model_dump() == {'value': '2.2', 'x': '3'}
-
-
-def test_json_encoders_type_adapter() -> None:
-    config = ConfigDict(json_encoders={Decimal: lambda x: str(x * 2), int: lambda x: str(x * 3)})
-
-    ta = TypeAdapter(int, config=config)
-    assert ta.dump_python(1) == '3'
-
-    ta = TypeAdapter(Decimal, config=config)
-    assert ta.dump_python(Decimal('1.1')) == '2.2'
-
-    ta = TypeAdapter(Union[Decimal, int], config=config)
-    assert ta.dump_python(Decimal('1.1')) == '2.2'
-    assert ta.dump_python(1) == '2'
