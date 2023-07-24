@@ -59,6 +59,7 @@ class ConfigWrapper:
     validate_return: bool
     protected_namespaces: tuple[str, ...]
     hide_input_in_errors: bool
+    defer_model_build: bool
 
     def __init__(self, config: ConfigDict | dict[str, Any] | type[Any] | None, *, check: bool = True):
         if check:
@@ -191,6 +192,7 @@ config_defaults = ConfigDict(
     validate_return=False,
     protected_namespaces=('model_',),
     hide_input_in_errors=False,
+    defer_model_build=False,
 )
 
 
